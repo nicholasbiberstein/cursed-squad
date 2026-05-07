@@ -1,8 +1,8 @@
 import Phaser from 'phaser'
 import { useStore } from '@store'
 import { isEnemyVisible } from '@systems/VisibilityEngine'
-import { registerAnimations, doMove, doPunch, confirmAbility, cancelAbility, buildPreview } from './BattleController'
-import type { Unit, Phase } from '@data/types'
+import { registerAnimations, doMove, doPunch, buildPreview, selectUnit } from './BattleController'
+import type { Unit } from '@data/types'
 
 // ============================================================
 // BATTLE SCENE  (Phaser 3)
@@ -22,7 +22,7 @@ export default class BattleScene extends Phaser.Scene {
   private fogGfx!:    Phaser.GameObjects.Graphics
   private numGroup!:  Phaser.GameObjects.Group
   private stsGroup!:  Phaser.GameObjects.Group
-  private _prevPhase: Phase = 'idle'
+  private _prevPhase: string = 'idle'
   private _prevTurnIdx = -1
 
   constructor() { super({ key: 'BattleScene' }) }
@@ -64,9 +64,9 @@ export default class BattleScene extends Phaser.Scene {
 
   update() {
     const s = useStore.getState()
-    if (s.phase !== this._prevPhase || s.turnIdx !== this._prevTurnIdx) {
+    if (s.phase !== this._prevPhase || s.selectedUnitId !== this._prevTurnIdx as any) {
       this._prevPhase    = s.phase
-      this._prevTurnIdx  = s.turnIdx
+      this._prevTurnIdx  = s.selectedUnitId as any
       this.renderHighlights()
     }
   }
@@ -118,7 +118,9 @@ export default class BattleScene extends Phaser.Scene {
   renderHighlights() {
     const g  = this.hlGfx; g.clear()
     const st = useStore.getState()
-    const cu = st.units.find(u => u.id === st.turnOrder[st.turnIdx])
+    // Only highlight when it's the player phase and a unit is selected
+    if (st.battlePhase !== 'player') return
+    const cu = st.units.find(u => u.id === st.selectedUnitId)
     if (!cu || cu.team !== 'player' || cu.hp <= 0) return
 
     const phase = st.phase
@@ -153,8 +155,9 @@ export default class BattleScene extends Phaser.Scene {
         g.fillStyle(0x3c8fff, 0.18); g.fillRect(c*CELL, r*CELL, CELL, CELL)
         g.lineStyle(1, 0x3c8fff, 0.5); g.strokeRect(c*CELL, r*CELL, CELL, CELL)
       }
-      // Undo highlight
-      if (st.undoPos && !st.act.abilitied && !st.act.punched) {
+      // Undo highlight — only show if selected unit hasn't acted yet
+      const selActs = cu ? (st.unitActs[cu.id] ?? { moved: false, acted: false }) : null
+      if (st.undoPos && selActs && !selActs.acted) {
         const { r, c } = st.undoPos
         g.fillStyle(0x3c8fff, 0.08); g.fillRect(c*CELL, r*CELL, CELL, CELL)
         g.lineStyle(1, 0x3c8fff, 0.25); g.strokeRect(c*CELL, r*CELL, CELL, CELL)
@@ -263,9 +266,8 @@ export default class BattleScene extends Phaser.Scene {
   // ── TOKENS ───────────────────────────────────────────────────
   renderTokens() {
     const st  = useStore.getState()
-    const cur = st.units.find(u => u.id === st.turnOrder[st.turnIdx])
+    const selectedId = st.selectedUnitId
 
-    // Remove tokens for dead/missing units
     for (const [id, container] of this.tokens.entries()) {
       const unit = st.units.find(u => u.id === id)
       if (!unit) { container.destroy(); this.tokens.delete(id) }
@@ -280,38 +282,38 @@ export default class BattleScene extends Phaser.Scene {
 
       const isPlayer = unit.team === 'player'
       const vis      = isPlayer || isEnemyVisible(unit, st.visibleCells, st.fogReveal)
-      if (!vis) {
-        this.tokens.get(unit.id)?.setVisible(false)
-        continue
-      }
+      if (!vis) { this.tokens.get(unit.id)?.setVisible(false); continue }
 
       const x = unit.pos.c * CELL + CELL/2
       const y = unit.pos.r * CELL + CELL/2
-      const isActive = cur?.id === unit.id
+      const isSelected = unit.id === selectedId
 
       let container = this.tokens.get(unit.id)
-      if (!container) {
-        container = this.createToken(unit)
-        this.tokens.set(unit.id, container)
-      }
+      if (!container) { container = this.createToken(unit); this.tokens.set(unit.id, container) }
 
       container.setPosition(x, y)
       container.setVisible(true)
       container.setAlpha(unit.statuses.invisible ? 0.42 : 1)
 
-      // Update HP text
       const hpText = container.getByName('hp') as Phaser.GameObjects.Text
       if (hpText) hpText.setText(String(unit.hp))
 
-      // Active glow
       const bg = container.getByName('bg') as Phaser.GameObjects.Rectangle
       if (bg) {
-        const borderColor = isActive
+        // Selected player unit = gold, others = team colour
+        const borderColor = isSelected
           ? 0xffb800
           : isPlayer
             ? (unit.statuses.invisible ? 0xc03cff : 0x3c8fff)
             : 0xff3c3c
-        bg.setStrokeStyle(isActive ? 2 : 1, borderColor)
+        bg.setStrokeStyle(isSelected ? 2 : 1, borderColor)
+        // Pulse selected unit slightly larger
+        if (isSelected && !this.tweens.isTweening(container)) {
+          this.tweens.add({ targets: container, scaleX: 1.08, scaleY: 1.08, duration: 300, yoyo: true, repeat: -1 })
+        } else if (!isSelected) {
+          this.tweens.killTweensOf(container)
+          container.setScale(1)
+        }
       }
     }
   }
@@ -345,11 +347,18 @@ export default class BattleScene extends Phaser.Scene {
 
   // ── CELL CLICK HANDLER ───────────────────────────────────────
   handleCellClick(r: number, c: number) {
-    const st  = useStore.getState()
-    const cur = st.units.find(u => u.id === st.turnOrder[st.turnIdx])
-    if (!cur || cur.team !== 'player') return
-
+    const st    = useStore.getState()
     const phase = st.phase
+
+    // Click on a friendly unit — select it
+    const clickedUnit = st.units.find(u => u.pos.r === r && u.pos.c === c && u.hp > 0)
+    if (clickedUnit?.team === 'player' && st.battlePhase === 'player') {
+      selectUnit(clickedUnit.id)
+      return
+    }
+
+    const cu = st.units.find(u => u.id === st.selectedUnitId)
+    if (!cu || cu.team !== 'player' || st.battlePhase !== 'player') return
 
     if (phase === 'move') { doMove(r, c); return }
 
@@ -360,68 +369,62 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     if (phase === 'ability' || phase === 'preview') {
-      const pwr   = cur.power
+      const pwr   = cu.power
       const range = (pwr.range ?? 1) + (pwr._rangeBonus ?? 0)
-      const dist  = Math.abs(r - cur.pos.r) + Math.abs(c - cur.pos.c)
+      const dist  = Math.abs(r - cu.pos.r) + Math.abs(c - cu.pos.c)
 
-      // Self-targeting abilities
       const isSelf = ['shield','double','selfbuff'].includes(pwr.type) ||
         ['shield','double_action','adrenaline','stabilize','warcry','rewind','entropy_field'].includes(pwr.id)
       if (isSelf) {
-        const pre = buildPreview([], null)
-        if (pre) { useStore.setState({ preview: pre, phase: 'preview' }) }
-        return
+        const pre = buildPreview([], null); if (pre) useStore.setState({ preview: pre, phase: 'preview' }); return
       }
 
-      // Teleport
       if (pwr.type === 'teleport') {
         if (!st.grid[r]?.[c] && !st.walls.has(`${r},${c}`)) {
           const fogOk = pwr.id === 'shadow_step' ? !st.visibleCells.has(`${r},${c}`) : st.visibleCells.has(`${r},${c}`)
           if (fogOk) {
-            // Execute teleport directly
-            st.grid[cur.pos.r][cur.pos.c] = null
-            cur.pos = { r, c }
-            st.grid[r][c] = cur.id
-            useStore.setState({ act: { ...st.act, abilitied: true }, phase: 'idle' })
-            useStore.setState({ units: [...st.units] })
+            st.grid[cu.pos.r][cu.pos.c] = null; cu.pos = { r, c }; st.grid[r][c] = cu.id
+            useStore.setState(s => ({ unitActs: { ...s.unitActs, [cu.id]: { ...s.unitActs[cu.id], acted: true } }, phase: 'idle', units: [...st.units] }))
           }
         }
         return
       }
 
-      // AOE — show preview centered on click
       if (pwr.type === 'aoe' && dist <= range) {
-        const tgts = st.units.filter(t => t.hp > 0 && t.team === 'enemy' &&
-          Math.max(Math.abs(t.pos.r - r), Math.abs(t.pos.c - c)) <= 1 + (pwr._radiusBonus ?? 0))
-        const pre = buildPreview(tgts, { r, c })
-        if (pre) useStore.setState({ preview: pre, phase: 'preview' })
-        return
+        const tgts = st.units.filter(t => t.hp > 0 && t.team === 'enemy' && Math.max(Math.abs(t.pos.r-r), Math.abs(t.pos.c-c)) <= 1+(pwr._radiusBonus??0))
+        const pre = buildPreview(tgts, { r, c }); if (pre) useStore.setState({ preview: pre, phase: 'preview' }); return
       }
 
-      // Heal / cleanse
       if (pwr.type === 'heal' || pwr.id === 'cleanse') {
-        const target = st.units.find(t => t.pos.r === r && t.pos.c === c && t.hp > 0 && t.team === 'player')
-        if (target && dist <= range) {
-          const pre = buildPreview([target], { r, c })
-          if (pre) useStore.setState({ preview: pre, phase: 'preview' })
-        }
+        const target = st.units.find(t => t.pos.r===r && t.pos.c===c && t.hp>0 && t.team==='player')
+        if (target && dist <= range) { const pre = buildPreview([target], {r,c}); if (pre) useStore.setState({ preview: pre, phase: 'preview' }) }
         return
       }
 
-      // Scan
       if (pwr.type === 'scan') {
-        if (dist <= range) {
-          const pre = buildPreview([], { r, c })
-          if (pre) useStore.setState({ preview: pre, phase: 'preview' })
+        if (dist <= range) { const pre = buildPreview([], {r,c}); if (pre) useStore.setState({ preview: pre, phase: 'preview' }) }
+        return
+      }
+
+      if (pwr.type === 'scan_all' || pwr.type === 'aoe_buff') {
+        const pre = buildPreview([], null); if (pre) useStore.setState({ preview: pre, phase: 'preview' }); return
+      }
+
+      // Line attack — cardinal direction only, with LoS
+      if (pwr.type === 'line') {
+        const target = st.units.find(t => t.pos.r===r && t.pos.c===c && t.hp>0 && t.team==='enemy')
+        if (target && isEnemyVisible(target, st.visibleCells, st.fogReveal)) {
+          const dr = r - cu.pos.r, dc = c - cu.pos.c
+          const isCardinal = (dr===0 || dc===0) && !(dr===0 && dc===0)
+          if (isCardinal) { const pre = buildPreview([target], {r,c}); if (pre) useStore.setState({ preview: pre, phase: 'preview' }) }
         }
         return
       }
 
-      // Attack / mark / slow / reveal — target enemy
-      const target = st.units.find(t => t.pos.r === r && t.pos.c === c && t.hp > 0 && t.team === 'enemy')
+      // Standard ranged — LoS required
+      const target = st.units.find(t => t.pos.r===r && t.pos.c===c && t.hp>0 && t.team==='enemy')
       if (target && dist <= range && isEnemyVisible(target, st.visibleCells, st.fogReveal)) {
-        const pre = buildPreview([target], { r, c })
-        if (pre) useStore.setState({ preview: pre, phase: 'preview' })
+        const pre = buildPreview([target], {r,c}); if (pre) useStore.setState({ preview: pre, phase: 'preview' })
       }
     }
   }
