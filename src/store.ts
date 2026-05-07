@@ -112,7 +112,9 @@ export interface GameStore {
   savedSquad:    (Unit | null)[] | null
   setSavedSquad: (s: (Unit|null)[] | null) => void
 
-  // ── Forge / Refine flows ─────────────────────────────────
+  // ── Auth ─────────────────────────────────────────────────
+  authUser:    { id: string; email: string; username: string } | null
+  setAuthUser: (u: { id: string; email: string; username: string } | null) => void
   forgePendingPowerId:  string | null
   setForgePendingPower: (id: string | null) => void
   refinePendingPowerId: string | null
@@ -205,6 +207,10 @@ export const useStore = create<GameStore>((set, get) => ({
   // ── Result ───────────────────────────────────────────────
   savedSquad:    null,
   setSavedSquad: (s) => set({ savedSquad: s }),
+
+  // ── Auth ─────────────────────────────────────────────────
+  authUser:    null,
+  setAuthUser: (u) => set({ authUser: u }),
 
   // ── Forge / Refine ────────────────────────────────────────
   forgePendingPowerId:  null,

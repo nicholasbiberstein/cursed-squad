@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { useStore } from '@store'
+import { initAuth } from '@lib/AuthManager'
 import TitleScreen      from './screens/TitleScreen'
 import BuildScreen      from './screens/BuildScreen'
 import ShopScreen       from './screens/ShopScreen'
@@ -24,6 +25,9 @@ export default function App(): React.ReactElement {
 
   // Unlock Web Audio on first interaction (mobile requirement)
   useEffect(() => {
+    // Init Supabase auth session
+    initAuth()
+
     const unlock = () => {
       // AudioContext is managed in the AudioEngine utility
       window.removeEventListener('click',      unlock)

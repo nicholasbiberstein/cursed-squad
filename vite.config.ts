@@ -10,12 +10,12 @@ export default defineConfig({
       '@systems': path.resolve(__dirname, 'src/systems'),
       '@ai':      path.resolve(__dirname, 'src/ai'),
       '@ui':      path.resolve(__dirname, 'src/ui'),
+      '@lib':     path.resolve(__dirname, 'src/lib'),
       '@store':   path.resolve(__dirname, 'src/store.ts'),
     },
   },
   server: {
     port: 3000,
-    host: '0.0.0.0',
-    strictPort: false,
+    open: true,
   },
 })
