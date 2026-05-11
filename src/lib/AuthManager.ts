@@ -30,21 +30,28 @@ export function isLoggedIn(): boolean {
 
 // ── Init — call once on app start ────────────────────────────
 export async function initAuth(): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (session?.user) {
-    await loadUserProfile(session.user.id, session.user.email ?? '')
-  }
+  // Skip if running without real Supabase keys (guest mode)
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
+  if (!url || url.includes('placeholder')) return
 
-  // Listen for auth state changes
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
       await loadUserProfile(session.user.id, session.user.email ?? '')
     }
-    if (event === 'SIGNED_OUT') {
-      _currentUser = null
-      useStore.setState({ authUser: null })
-    }
-  })
+
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        await loadUserProfile(session.user.id, session.user.email ?? '')
+      }
+      if (event === 'SIGNED_OUT') {
+        _currentUser = null
+        useStore.setState({ authUser: null })
+      }
+    })
+  } catch (e) {
+    console.warn('[Auth] Failed to init — running in guest mode.')
+  }
 }
 
 async function loadUserProfile(userId: string, email: string): Promise<void> {
@@ -154,29 +161,25 @@ export async function pullCloudSave(): Promise<void> {
 
   if (error || !data) return
 
-  // Cloud save wins if it has more coins/diamonds (anti-cheat basic check)
-  // If local has more progress, keep local
-  const useCloud = data.coins >= save.coins && data.diamonds >= save.diamonds
+  // Always take the maximum of cloud and local for each value
+  // This ensures purchases (which update cloud directly) always show up
+  // and local progress (coins earned in battle) is never lost
+  save.coins      = Math.max(data.coins,    save.coins)
+  save.diamonds   = Math.max(data.diamonds, save.diamonds)
+  save.forged     = data.forged.length >= save.forged.length ? data.forged as ForgedEntry[] : save.forged
+  save.squads     = data.squads    as any[]
+  save.difficulty = data.difficulty as Difficulty
+  save.persistAll()
 
-  if (useCloud) {
-    save.coins      = data.coins
-    save.diamonds   = data.diamonds
-    save.forged     = data.forged    as ForgedEntry[]
-    save.squads     = data.squads    as any[]
-    save.difficulty = data.difficulty as Difficulty
-    save.persistAll()
+  useStore.setState({
+    coins:       save.coins,
+    diamonds:    save.diamonds,
+    forged:      save.forged,
+    savedSquads: save.squads,
+    difficulty:  save.difficulty,
+  })
 
-    useStore.setState({
-      coins:       save.coins,
-      diamonds:    save.diamonds,
-      forged:      save.forged,
-      savedSquads: save.squads,
-      difficulty:  save.difficulty,
-    })
-  } else {
-    // Local is ahead — push it to cloud
-    await pushCloudSave()
-  }
+  console.log('[Auth] Synced — diamonds:', save.diamonds, 'coins:', save.coins)
 
   if (data.tutorial_done) markTutorialComplete()
 }

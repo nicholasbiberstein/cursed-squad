@@ -10,6 +10,7 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^9.4.0",
     "@supabase/supabase-js": "^2.105.3",
     "phaser": "^3.70.0",
     "react": "^18.3.1",

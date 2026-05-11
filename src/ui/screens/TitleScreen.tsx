@@ -3,6 +3,7 @@ import { useStore } from '@store'
 import { isTutorialComplete, resetTutorial } from './tutorial/TutorialManager'
 import TutorialScreen from './tutorial/TutorialScreen'
 import AuthScreen from './auth/AuthScreen'
+import DiamondShop from './DiamondShop'
 import { signOut, pushCloudSave } from '@lib/AuthManager'
 
 export default function TitleScreen(): React.ReactElement {
@@ -10,12 +11,35 @@ export default function TitleScreen(): React.ReactElement {
 
   const [showTutorial, setShowTutorial] = useState(false)
   const [showAuth,     setShowAuth]     = useState(false)
+  const [showDiamonds, setShowDiamonds] = useState(false)
   const [checked,      setChecked]      = useState(false)
   const [saveMsg,      setSaveMsg]      = useState<string | null>(null)
 
   useEffect(() => {
     if (!isTutorialComplete()) setShowTutorial(true)
     setChecked(true)
+
+    // If returning from Stripe purchase, keep trying to sync
+    // until auth is ready and diamonds update
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('purchase') === 'success') {
+      let attempts = 0
+      const maxAttempts = 8
+      const interval = setInterval(async () => {
+        attempts++
+        try {
+          const { pullCloudSave, isLoggedIn } = await import('@lib/AuthManager')
+          if (isLoggedIn()) {
+            await pullCloudSave()
+            clearInterval(interval)
+          } else if (attempts >= maxAttempts) {
+            clearInterval(interval)
+          }
+        } catch {
+          if (attempts >= maxAttempts) clearInterval(interval)
+        }
+      }, 1000)
+    }
   }, [])
 
   function handleTutorialComplete() {
@@ -41,6 +65,7 @@ export default function TitleScreen(): React.ReactElement {
     <>
       {showTutorial && <TutorialScreen onComplete={handleTutorialComplete} />}
       {showAuth     && <AuthScreen onClose={() => setShowAuth(false)} />}
+      {showDiamonds && <DiamondShop onClose={() => setShowDiamonds(false)} onNeedLogin={() => { setShowDiamonds(false); setShowAuth(true) }} />}
 
       <div style={{
         display: 'flex', flexDirection: 'column',
@@ -138,6 +163,7 @@ export default function TitleScreen(): React.ReactElement {
           <button className="btn btn-secondary" onClick={() => { setMode('quick'); setScreen('build') }}>⚔ QUICK BATTLE</button>
           <button className="btn btn-gold" onClick={() => setScreen('shop')}>🛒 SHOP</button>
           <button className="btn btn-purple" onClick={() => setScreen('collection')}>📁 COLLECTION</button>
+          <button className="btn btn-purple" onClick={() => setShowDiamonds(true)}>💎 GET DIAMONDS</button>
         </div>
 
         {/* Coming soon */}
