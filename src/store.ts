@@ -18,7 +18,7 @@ import { save } from '@systems/SaveManager'
 export type Screen =
   | 'title' | 'build' | 'shop' | 'collection'
   | 'forge'  | 'refine' | 'campaign' | 'inter'
-| 'battle' | 'result' | 'multiplayer' | 'packs' | 'events' | 'mythical' | 'dungeon'
+| 'battle' | 'result' | 'multiplayer' | 'packs' | 'events' | 'mythical' | 'dungeon' | 'profile'
 
 export type BattlePhase = 'player' | 'enemy' | 'idle'
 

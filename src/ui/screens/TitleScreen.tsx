@@ -75,7 +75,7 @@ export default function TitleScreen(): React.ReactElement {
       }}>
 
         {/* Account bar — top right */}
-        <div style={{ position: 'absolute', top: 14, right: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ position: 'absolute', top: 14, right: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
           {authUser ? (
             <>
               <div style={{ fontSize: 9, color: 'var(--accent3)' }}>
@@ -91,6 +91,14 @@ export default function TitleScreen(): React.ReactElement {
               <button
                 className="btn btn-secondary"
                 style={{ fontSize: 9, padding: '3px 8px' }}
+                onClick={() => setScreen('profile')}
+              >
+                👤 PROFILE
+              </button>
+              <span style={{ color: 'var(--border)', fontSize: 14 }}>|</span>
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: 9, padding: '3px 8px', color: 'var(--accent)', borderColor: 'var(--accent)' }}
                 onClick={handleSignOut}
               >
                 SIGN OUT

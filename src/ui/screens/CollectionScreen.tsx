@@ -6,6 +6,7 @@ import { rarColor, rarLabel, SYN_TAGS, POWER_CATS } from '@data/rarity'
 import { getRefineOptions } from '@data/refinements'
 import { rerollCost, refineCost, confirmReroll, applyRefinement, generateCurseOptions } from '@systems/ForgeSystem'
 import { save } from '@systems/SaveManager'
+import CollectionUpgrade from './CollectionUpgrade'
 import type { ForgedEntry, Curse, Power } from '@data/types'
 
 type RarFilter = 'all' | 'common' | 'rare' | 'epic' | 'legendary' | 'mythical'
@@ -16,6 +17,7 @@ export default function CollectionScreen(): React.ReactElement {
   const [rarFilter, setRarFilter]   = useState<RarFilter>('all')
   const [catFilter, setCatFilter]   = useState<string>('all')
   const [notification, setNotification] = useState<string | null>(null)
+  const [upgradeEntry, setUpgradeEntry] = useState<any | null>(null)
 
   // Reroll flow
   const [rerollingEntry,  setRerollingEntry]  = useState<ForgedEntry | null>(null)
@@ -117,6 +119,7 @@ export default function CollectionScreen(): React.ReactElement {
       maxWidth: 1200, margin: '0 auto', width: '100%',
       background: 'var(--bg)', pointerEvents: 'all',
     }}>
+      {upgradeEntry && <CollectionUpgrade entry={upgradeEntry} onClose={() => setUpgradeEntry(null)} onUpgrade={() => setUpgradeEntry(null)} />}
 
       {/* Toast */}
       {notification && (
@@ -550,6 +553,13 @@ export default function CollectionScreen(): React.ReactElement {
                         ♻ REROLL
                       </button>
                     )}
+                    <button
+                      className="btn btn-secondary"
+                      style={{ fontSize: 9, padding: '3px 8px' }}
+                      onClick={() => setUpgradeEntry(entry)}
+                    >
+                      ⬆ LV {entry.level ?? 1} · {entry.duplicates ?? 0} dupes
+                    </button>
                     <span style={{ fontSize: 7, color: 'var(--muted)', marginLeft: 2 }}>
                       {canReroll ? `💎${reRCost}` : ''}
                       {canRefine && canReroll ? ' · ' : ''}

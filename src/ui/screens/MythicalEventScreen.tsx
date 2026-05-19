@@ -345,7 +345,15 @@ export default function MythicalEventScreen() {
 
                   <div style={{ borderTop:'1px solid var(--border)', paddingTop:10, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:22, color:'var(--accent2)' }}>{pack.price}</div>
-                    <button className={`btn ${pack.featured?'btn-primary':'btn-gold'}`} style={{ fontSize:12 }} onClick={() => window.alert('Spin pack purchases coming soon — use the Diamond Shop for now!')}>
+                    <button className={`btn ${pack.featured?'btn-primary':'btn-gold'}`} style={{ fontSize:12 }} onClick={async () => {
+                      if (!authUser) { window.alert('Sign in to purchase spin packs.'); return }
+                      try {
+                        const res = await fetch('/api/buy-spin-pack', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ packId: pack.id, userId: authUser.id, userEmail: authUser.email }) })
+                        const data = await res.json()
+                        if (data.url) window.location.href = data.url
+                        else window.alert(data.error ?? 'Purchase failed')
+                      } catch { window.alert('Network error — try again.') }
+                    }}>
                       BUY
                     </button>
                   </div>

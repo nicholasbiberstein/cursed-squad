@@ -16,6 +16,8 @@ import MythicalEventScreen from './screens/MythicalEventScreen'
 import PackShopScreen   from './screens/PackShopScreen'
 import './styles.css'
 import EventsScreen from './screens/EventsScreen'
+import DungeonScreen from './screens/DungeonScreen'
+import ProfileScreen from './screens/ProfileScreen'
 
 // ============================================================
 // APP — Root screen router
@@ -57,6 +59,8 @@ export default function App(): React.ReactElement {
       {screen === 'mythical' && <MythicalEventScreen />}
       {screen === 'packs'       && <PackShopScreen />}
       {screen === 'events' && <EventsScreen />}
+      {screen === 'dungeon' && <DungeonScreen />}
+      {screen === 'profile' && <ProfileScreen />}
     </div>
   )
 }
