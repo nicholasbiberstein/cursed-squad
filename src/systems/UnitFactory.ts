@@ -75,7 +75,8 @@ export function buildPlayerUnit(
     statuses:       {},
     turnCount:      0,
     pendingAbility: null,
-    pos:            { r: 0, c: 0 }, // set by MapBuilder.placeUnits
+    pos:            { r: 0, c: 0 },
+    _cardLevel:     entry.level ?? 1,  // used by CombatEngine for level bonus
   }
 
   applyStartStatuses(unit)

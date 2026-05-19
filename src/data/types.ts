@@ -90,6 +90,8 @@ export interface ForgedEntry {
   rerollCount:  number
   refinements:  string[]   // array of refinement IDs
   isStarter?:   boolean
+  level?:       number     // 1-10, default 1
+  duplicates?:  number     // how many dupes owned for upgrading
 }
 
 // ── Refinement ───────────────────────────────────────────────
@@ -146,6 +148,7 @@ export interface Unit {
   pendingAbility:  PendingAbility | null
   pos:             GridPos
   _dmgBonus?:      number   // wave difficulty bonus for enemies
+  _cardLevel?:     number   // card upgrade level 1-10, affects damage multiplier
 }
 
 // ── Game phase ───────────────────────────────────────────────

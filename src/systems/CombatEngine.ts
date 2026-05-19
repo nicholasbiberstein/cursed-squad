@@ -38,7 +38,8 @@ export function calcDamageMultiplier(attacker: Unit, power: Power): number {
   const weak   = attacker.statuses.weakened  ? 0.6 : 1
   const ambush = (power.isAmbush && attacker.statuses.invisible) ? ((power._ambushBonus ?? 0.5) + 1) : 1
   const berserk= attacker.downside.id === 'berserker' ? 1.75 : 1
-  return emp * weak * ambush * berserk
+  const level  = 1 + (((attacker as any)._cardLevel ?? 1) - 1) * 0.05  // +5% per level
+  return emp * weak * ambush * berserk * level
 }
 
 export function calcIncomingDamage(target: Unit, rawDmg: number): { final: number; shieldAbsorbed: number } {

@@ -18,7 +18,7 @@ import { save } from '@systems/SaveManager'
 export type Screen =
   | 'title' | 'build' | 'shop' | 'collection'
   | 'forge'  | 'refine' | 'campaign' | 'inter'
-  | 'battle' | 'result'
+| 'battle' | 'result' | 'multiplayer' | 'packs' | 'events' | 'mythical' | 'dungeon'
 
 export type BattlePhase = 'player' | 'enemy' | 'idle'
 
@@ -115,6 +115,10 @@ export interface GameStore {
   // ── Auth ─────────────────────────────────────────────────
   authUser:    { id: string; email: string; username: string } | null
   setAuthUser: (u: { id: string; email: string; username: string } | null) => void
+  eventState:     any | null
+  packMultiplier: number
+  mythicalProgress:       any | null
+  pendingMythicalPowerId: string | null
   forgePendingPowerId:  string | null
   setForgePendingPower: (id: string | null) => void
   refinePendingPowerId: string | null
@@ -211,6 +215,10 @@ export const useStore = create<GameStore>((set, get) => ({
   // ── Auth ─────────────────────────────────────────────────
   authUser:    null,
   setAuthUser: (u) => set({ authUser: u }),
+  eventState:     null,
+  packMultiplier: 1,
+  mythicalProgress:       null,
+  pendingMythicalPowerId: null,
 
   // ── Forge / Refine ────────────────────────────────────────
   forgePendingPowerId:  null,

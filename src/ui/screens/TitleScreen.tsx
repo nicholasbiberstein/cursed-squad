@@ -161,19 +161,18 @@ export default function TitleScreen(): React.ReactElement {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
           <button className="btn btn-primary" onClick={() => { setMode('campaign'); setScreen('build') }}>🏕 CAMPAIGN</button>
           <button className="btn btn-secondary" onClick={() => { setMode('quick'); setScreen('build') }}>⚔ QUICK BATTLE</button>
-          <button className="btn btn-gold" onClick={() => setScreen('shop')}>🛒 SHOP</button>
+          <button className="btn btn-gold" onClick={() => setScreen('packs')}>📦 CARD PACKS</button>
           <button className="btn btn-purple" onClick={() => setScreen('collection')}>📁 COLLECTION</button>
           <button className="btn btn-purple" onClick={() => setShowDiamonds(true)}>💎 GET DIAMONDS</button>
+          <button className="btn btn-primary" onClick={() => setScreen('multiplayer')}>⚔ MULTIPLAYER</button>
+          <button className="btn btn-gold" onClick={() => setScreen('events')}>🎯 EVENTS</button>
         </div>
 
         {/* Coming soon */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <div style={{ fontSize: 9, padding: '4px 12px', border: '1px solid var(--border)', color: 'var(--muted)', fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.1em' }}>
-            ⚔ RANKED PvP — COMING SOON
-          </div>
-          <div style={{ fontSize: 9, padding: '4px 12px', border: '1px solid var(--border)', color: 'var(--muted)', fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.1em' }}>
-            🔮 EVENTS — COMING SOON
-          </div>
+          <button className="btn btn-secondary" style={{ borderColor: '#ff3c3c', color: '#ff3c3c' }} onClick={() => setScreen('mythical')}>
+            ☠ MYTHICAL EVENT
+          </button>
         </div>
 
         {/* Currency */}

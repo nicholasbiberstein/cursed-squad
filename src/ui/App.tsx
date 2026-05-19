@@ -11,7 +11,11 @@ import CampaignScreen   from './screens/CampaignScreen'
 import InterBattleScreen from './screens/InterBattleScreen'
 import BattleHUD        from './screens/BattleHUD'
 import ResultScreen     from './screens/ResultScreen'
+import MultiplayerScreen from './screens/MultiplayerScreen'
+import MythicalEventScreen from './screens/MythicalEventScreen'
+import PackShopScreen   from './screens/PackShopScreen'
 import './styles.css'
+import EventsScreen from './screens/EventsScreen'
 
 // ============================================================
 // APP — Root screen router
@@ -48,7 +52,11 @@ export default function App(): React.ReactElement {
       {screen === 'campaign'   && <CampaignScreen />}
       {screen === 'inter'      && <InterBattleScreen />}
       {screen === 'battle'     && <BattleHUD />}
-      {screen === 'result'     && <ResultScreen />}
+      {screen === 'result'      && <ResultScreen />}
+      {screen === 'multiplayer' && <MultiplayerScreen />}
+      {screen === 'mythical' && <MythicalEventScreen />}
+      {screen === 'packs'       && <PackShopScreen />}
+      {screen === 'events' && <EventsScreen />}
     </div>
   )
 }
