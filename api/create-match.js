@@ -108,7 +108,7 @@ module.exports = async function handler(req, res) {
           .single()
 
         // Update MMR for both players
-        await updateMMR(opponent.player_a, userId, result, isPlacement)
+        await updateMMR(opponent.player_a, userId, result, isPlacement, match.id)
 
         // Notify both
         await notifyPlayers(opponent.player_a, userId, result, match.id, true)
@@ -177,7 +177,7 @@ async function runBattle(squadA, squadB, playerAId, playerBId, isRanked) {
   return { winner, rounds: Math.floor(3 + Math.random() * 8), replay, survivors: { a: winner === 'a' ? 2 : 0, b: winner === 'b' ? 2 : 0 } }
 }
 
-async function updateMMR(playerAId, playerBId, result, isPlacement) {
+async function updateMMR(playerAId, playerBId, result, isPlacement, matchId) {
   const { data: statsA } = await supabase.from('player_stats').select('*').eq('player_id', playerAId).single()
   const { data: statsB } = await supabase.from('player_stats').select('*').eq('player_id', playerBId).single()
 
@@ -221,7 +221,7 @@ async function updateMMR(playerAId, playerBId, result, isPlacement) {
   }, { onConflict: 'player_id' })
 
   // Update match with MMR changes
-  await supabase.from('matches').update({ mmr_change_a: changeA, mmr_change_b: changeB })
+  await supabase.from('matches').update({ mmr_change_a: changeA, mmr_change_b: changeB }).eq('id', matchId)
 
   // Give rewards via saves
   const rewardWin  = { coins: 60, diamonds: 1 }

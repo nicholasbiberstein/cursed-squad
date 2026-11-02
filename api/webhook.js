@@ -49,14 +49,43 @@ module.exports = async function handler(req, res) {
     const meta    = session.metadata ?? {}
     const type    = meta.type ?? 'diamonds'
 
-    if (type === 'spin_pack') {
-      await handleSpinPack(session, meta)
-    } else {
-      await handleDiamondPurchase(session, meta)
+    // Idempotency: Stripe retries and duplicate deliveries must not credit twice.
+    // The session itself is the ledger (metadata.fulfilled); no DB change needed.
+    let claimed = false
+    try {
+      claimed = await claimSession(session.id)
+      if (!claimed) {
+        console.log(`[Webhook] Duplicate delivery for session ${session.id}, skipping`)
+        res.status(200).json({ received: true, duplicate: true })
+        return
+      }
+      if (type === 'spin_pack') {
+        await handleSpinPack(session, meta)
+      } else {
+        await handleDiamondPurchase(session, meta)
+      }
+    } catch (err) {
+      console.error('[Webhook] Fulfilment failed:', err.message)
+      if (claimed) await releaseSession(session.id).catch(() => {})
+      res.status(500).json({ error: 'Fulfilment failed, will retry' })
+      return
     }
   }
 
   res.status(200).json({ received: true })
+}
+
+// Returns true if this call won the right to fulfil the session, false if already fulfilled.
+async function claimSession(sessionId) {
+  const fresh = await stripe.checkout.sessions.retrieve(sessionId)
+  if (fresh.metadata?.fulfilled === '1') return false
+  await stripe.checkout.sessions.update(sessionId, { metadata: { fulfilled: '1' } })
+  return true
+}
+
+// Empty string unsets the key in Stripe, so a failed fulfilment can be retried.
+async function releaseSession(sessionId) {
+  await stripe.checkout.sessions.update(sessionId, { metadata: { fulfilled: '' } })
 }
 
 async function handleDiamondPurchase(session, meta) {
