@@ -24,6 +24,23 @@ function lsSet(key: string, value: unknown): void {
   } catch { /* storage full or unavailable */ }
 }
 
+// ── Shape guards ─────────────────────────────────────────────
+// JSON.parse only proves the text was valid JSON, not that it has the
+// shape we expect. A wrong shape here used to throw at import time and
+// leave the app on a black screen.
+function safeNumber(v: unknown, def: number): number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : def
+}
+
+function safeArray<T>(v: unknown, isValid: (x: unknown) => boolean): T[] {
+  return Array.isArray(v) ? (v.filter(isValid) as T[]) : []
+}
+
+const isForgedEntry = (x: unknown): boolean =>
+  !!x && typeof x === 'object' && typeof (x as { powerId?: unknown }).powerId === 'string'
+
+const isPlainObject = (x: unknown): boolean => !!x && typeof x === 'object'
+
 // ── Migration from HTML prototype versions ───────────────────
 function migrateLegacySaves(): void {
   if (lsGet('migrated', false)) return
@@ -34,14 +51,14 @@ function migrateLegacySaves(): void {
       const diamonds = parseInt(localStorage.getItem(`${p}diamonds`) ?? '0', 10)
       if (coins > 0 && lsGet('coins', 0) === 0) {
         lsSet('coins',    Math.min(coins,    9_999))
-        lsSet('diamonds', Math.min(diamonds, 999))
+        lsSet('diamonds', Math.min(Number.isFinite(diamonds) ? diamonds : 0, 999))
       }
       // Only migrate non-empty forged arrays
       const raw = localStorage.getItem(`${p}forged`)
       if (raw) {
         try {
-          const parsed = JSON.parse(raw) as ForgedEntry[]
-          if (Array.isArray(parsed) && parsed.length > 0 && lsGet<ForgedEntry[]>('forged', []).length === 0) {
+          const parsed = safeArray<ForgedEntry>(JSON.parse(raw), isForgedEntry)
+          if (parsed.length > 0 && safeArray<ForgedEntry>(lsGet<unknown>('forged', []), isForgedEntry).length === 0) {
             lsSet('forged', parsed)
           }
         } catch { /* corrupt save — ignore */ }
@@ -74,12 +91,12 @@ export class SaveManager {
 
   private constructor() {
     migrateLegacySaves()
-    this.coins          = lsGet('coins',           320)
-    this.diamonds       = lsGet('diamonds',        10)
-    this.forged         = ensureStarters(lsGet<ForgedEntry[]>('forged', []))
-    this.squads         = lsGet<SavedSquad[]>('squads', [])
+    this.coins          = safeNumber(lsGet<unknown>('coins', 320), 320)
+    this.diamonds       = safeNumber(lsGet<unknown>('diamonds', 10), 10)
+    this.forged         = ensureStarters(safeArray<ForgedEntry>(lsGet<unknown>('forged', []), isForgedEntry))
+    this.squads         = safeArray<SavedSquad>(lsGet<unknown>('squads', []), isPlainObject)
     this.difficulty     = lsGet<Difficulty>('difficulty', 'standard')
-    this.hintsDismissed = lsGet<boolean>('hints_dismissed', false)
+    this.hintsDismissed = lsGet<boolean>('hints_dismissed', false) === true
     this.persistForged() // ensure starters are written to storage
   }
 

@@ -71,7 +71,7 @@ export default function TitleScreen(): React.ReactElement {
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         minHeight: '100vh', gap: 18, textAlign: 'center',
-        padding: 28, background: 'var(--bg)', pointerEvents: 'all',
+        padding: 28, background: 'var(--bg)', pointerEvents: 'all', visibility: showTutorial ? 'hidden' : 'visible',
       }}>
 
         {/* Account bar — top right */}
