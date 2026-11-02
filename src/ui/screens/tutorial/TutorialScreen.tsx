@@ -25,7 +25,19 @@ import { SFX } from '@ui/AudioEngine'
 // Reward: +150 coins + 2 diamonds on completion.
 // ============================================================
 
-const CELL = 52  // Bigger cells for 9x9 tutorial grid
+const MAX_CELL = 52  // Bigger cells for 9x9 tutorial grid on wide screens
+
+// Shrinks cells so the 9x9 grid fits narrow (phone) viewports
+function useCellSize(): number {
+  const calc = () => Math.max(28, Math.min(MAX_CELL, Math.floor((window.innerWidth - 48) / TUTORIAL_GRID_SIZE)))
+  const [cell, setCell] = useState(calc)
+  useEffect(() => {
+    const onResize = () => setCell(calc())
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return cell
+}
 
 const TUTORIAL_REWARD = { coins: 150, diamonds: 2 }
 
@@ -117,6 +129,7 @@ function TutorialBattleCanvas({
   highlightCells: Set<string>; onCellClick: (r: number, c: number) => void
 }) {
   const size = TUTORIAL_GRID_SIZE
+  const CELL = useCellSize()
   const cells = []
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
@@ -153,7 +166,7 @@ function TutorialBattleCanvas({
           )}
           {unit && !isFog && (
             <div style={{
-              width: 38, height: 38, display: 'flex', flexDirection: 'column',
+              width: CELL - 14, height: CELL - 14, display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               background: unit.team === 'player' ? 'rgba(60,143,255,0.2)' : 'rgba(255,60,60,0.2)',
               border: `2px solid ${isSel ? '#ffb800' : unit.team === 'player' ? '#3c8fff' : '#ff3c3c'}`,
